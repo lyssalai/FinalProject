@@ -1,0 +1,94 @@
+---
+title: "NYT Bestseller’s List"
+author: "Alyssa Lai"
+date: "5/9/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(jsonlite)
+library(dplyr)
+library(httr)
+library(tidyverse)
+library(stringr)
+library(xml2)
+library(viridis)
+library(knitr)
+library(plyr)
+```
+
+## Top 15 New York Times Bestseller's List
+
+```{r echo=FALSE}
+
+api_key <- 'd79f5372049f45ee9913309ba04e9329'
+
+books_request <- function(list_name, params = c(NA)){
+  books_query <- paste0('http://api.nytimes.com/svc/books/v3/lists/', list_name, '?api-key=', api_key)
+  if (length(na.exclude(params)) > 0){
+    books_query <- paste0(books_query, '&', paste(params, collapse = '&'))
+  }
+  fromJSON(books_query)
+}
+
+list_names <- books_request('names')$results
+
+books_response <- books_request('combined-print-and-e-book-fiction')$results
+str(books_response, max.level = 1)
+
+books_df <- books_response$books
+class(books_df)
+
+books_df <- books_df %>% select(rank, rank_last_week, weeks_on_list, title, author, publisher, primary_isbn10)
+names(books_df) <- c("Rank", "Last", "Weeks", "Title", "Author", "Publisher", "ISBN10")
+
+books_df
+```
+
+The titles are listed with their current rank on the Bestseller's List, as well as the number of weeks they have been on the list and their rankings in the previous week. Additionally, the author's namee, publishers, and 10-digit ISBN are also listed.
+
+## Publishers Of Top 15 Titles on NYT's Bestseller's List
+
+```{r echo=FALSE}
+pubfreq <- table(books_df$Publisher)
+barplot(pubfreq,
+        horiz = TRUE,
+        las = 1,
+        cex.names=.4,
+        main = "Publishers on Top 15 NYT Bestseller's List",
+        xlab = "Frequency",
+        col = c("red"))
+```
+
+Based on the plot, it is evident that at this time, the publisher St. Martin's has the most titles on the Top 15 NYT Bestseller's list. They have *Shattered Mirror*, *The Great Alone*, and *After Anna*. At this time, it can be concluded that St. Martin's has great potential for upcoming and established authors.
+
+## Correlation Between Rank and Number of Weeks on the Bestseller's List
+
+```{r echo=FALSE}
+
+rankweek <- as.matrix(select(books_df, Weeks, Rank))
+plot(rankweek,
+     main = "Rank of Title VS Number of Weeks on Bestseller's List",
+     pch = 20)
+
+```
+
+The plot displays the relationship between the number of weeks each title has been on the NYT Bestseller's List and the respective title's current rank on the Bestseller's List. There looks to a slight correlation in the fact that the longer a title stays on the Bestseller's List, the more it decreases in its rank. However, I performed a linear regression test between the rank and the number of weeks to test the hypothesis that there is a correlation.  
+
+The null hypothesis is that there is no correlation between the titles' ranks and the number of weeks it has been on the Bestseller's List. The alternate hypothesis is that there is a correlation between the titles' ranks and the number of weeks it has been on the Bestseller's List.  
+
+The results of the test are shown below.
+
+```{r echo=FALSE}
+
+dfrankweek <- as.data.frame(rankweek)
+rankweekLM <- lm(Rank ~ Weeks, data = dfrankweek)
+summary(rankweekLM)
+
+```
+
+Despite having shown some correlation, the statistical test dispproved the presence of a significant correlation. The p-value for the test came to be 0.8718. It is larger than 0.05, meaning that I have failed to reject the null hypothesis.  
+
+There is no significant correlation between the Bestseller's titles' ranks and the number of weeks it has been on the Bestseller's List.
